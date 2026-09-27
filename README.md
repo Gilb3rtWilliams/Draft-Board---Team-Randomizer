@@ -11,6 +11,7 @@ A single-page web app for putting together balanced teams for a school league to
 - **Two ways to size teams.** Choose either the number of teams you want, or how many players per team, and it works out the rest.
 - **Fast roster entry.** Add players one at a time in an editable table, or paste a list — either plain names (one per line) or Name / Gender / Rating columns copied straight out of a spreadsheet.
 - **Manual fine-tuning.** Not happy with a specific match-up? Drag any player onto another player's row to swap them directly — works across teams or within one.
+- **Export to a spreadsheet.** Download the drafted teams as a `.csv` file (Team, Board, Name, Gender, Rating, Captain) that opens directly in Excel, Google Sheets, or Numbers.
 - **Animated splash screen.** A short intro screen with a shuffling-pieces animation before you land on the roster/team-builder view.
 
 ## How the drafting works

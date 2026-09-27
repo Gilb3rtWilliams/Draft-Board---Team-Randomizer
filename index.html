@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Draft Board — Team Randomizer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="icon" href="randomizer.png" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+<style>
+  :root{
+    --bg:#0F1222; --panel:#171B32; --panel2:#1D2440; --chalk:#F5F6FA;
+    --muted:#9498C0; --accent:#FFB648; --accent2:#6FE7DD; --line:rgba(245,246,250,0.12);
+    --danger:#FF6B6B;
+    box-sizing:border-box;
+    padding-top: env(safe-area-inset-top,0px);
+    padding-bottom: env(safe-area-inset-bottom,0px);
+  }
+  *{box-sizing:border-box;}
+  html{font-size:17px;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--chalk);font-family:'Inter',sans-serif;height:100%;}
+  body{min-height:100%;}
+  h1,h2,h3,.num{font-family:'Barlow Condensed',sans-serif;font-weight:700;letter-spacing:0.2px;}
+
+  /* Splash */
+  .splash{position:fixed;inset:0;background:radial-gradient(circle at 50% 30%, #1D2440 0%, #0F1222 70%);
+    display:flex;align-items:center;justify-content:center;z-index:50;
+    transition:opacity .45s ease, visibility .45s ease;}
+  .splash.hide{opacity:0;visibility:hidden;pointer-events:none;}
+  .splash-inner{text-align:center;padding:40px;max-width:520px;position:relative;z-index:1;}
+  .splash-emoji{font-size:52px;margin-bottom:6px;}
+  .splash-inner h1{font-size:58px;margin:0 0 10px;color:var(--chalk);}
+  .splash-inner p{color:var(--muted);font-size:17px;margin:0 0 30px;line-height:1.5;}
+  .btn-splash{width:auto;padding:15px 38px;font-size:16px;background:var(--accent);color:#241804;}
+  .btn-splash:hover{filter:brightness(1.08);}
+
+  .shuffle-stage{position:relative;width:260px;height:96px;margin:0 auto 18px;z-index:1;}
+  .shuffle-stage .slot{position:absolute;top:50%;width:34px;height:34px;margin-top:-17px;border-radius:50%;border:2px dashed var(--line);}
+  .shuffle-stage .slot.s1{left:4px;} .shuffle-stage .slot.s2{left:80px;}
+  .shuffle-stage .slot.s3{left:156px;} .shuffle-stage .slot.s4{left:224px;}
+  .piece{position:absolute;top:50%;width:30px;height:30px;margin-top:-15px;border-radius:50%;
+    box-shadow:0 3px 10px rgba(0,0,0,.4);}
+  .piece.p1{background:var(--accent);animation:shuffleA 5s ease-in-out infinite;}
+  .piece.p2{background:var(--accent2);animation:shuffleB 5s ease-in-out infinite;}
+  .piece.p3{background:#FF6B6B;animation:shuffleC 5s ease-in-out infinite;}
+  .piece.p4{background:var(--chalk);animation:shuffleD 5s ease-in-out infinite;}
+  @keyframes shuffleA{0%,100%{left:6px;transform:rotate(0deg);}25%{left:158px;transform:rotate(160deg);}50%{left:82px;transform:rotate(320deg);}75%{left:226px;transform:rotate(480deg);}}
+  @keyframes shuffleB{0%,100%{left:82px;transform:rotate(0deg);}25%{left:226px;transform:rotate(-140deg);}50%{left:6px;transform:rotate(-280deg);}75%{left:158px;transform:rotate(-420deg);}}
+  @keyframes shuffleC{0%,100%{left:158px;transform:rotate(0deg);}25%{left:6px;transform:rotate(200deg);}50%{left:226px;transform:rotate(380deg);}75%{left:82px;transform:rotate(560deg);}}
+  @keyframes shuffleD{0%,100%{left:226px;transform:rotate(0deg);}25%{left:82px;transform:rotate(-180deg);}50%{left:158px;transform:rotate(-360deg);}75%{left:6px;transform:rotate(-520deg);}}
+  @media (prefers-reduced-motion: reduce){
+    .piece{animation:none !important;}
+  }
+
+  .app{max-width:1680px;margin:0 auto;padding:34px 44px 70px;}
+  header.top{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin-bottom:32px;border-bottom:1px solid var(--line);padding-bottom:22px;flex-wrap:wrap;}
+  header.top h1{font-size:46px;margin:0;line-height:1;}
+  header.top p{margin:8px 0 0;color:var(--muted);font-size:16px;}
+  .layout{display:grid;grid-template-columns:minmax(400px,480px) 1fr;gap:32px;}
+  @media (max-width:1000px){.layout{grid-template-columns:1fr;} .app{padding:26px 20px 54px;}}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:26px;}
+  .card + .card{margin-top:22px;}
+  .card h2{font-size:26px;margin:0 0 16px;}
+  label{display:block;font-size:14px;color:var(--muted);margin-bottom:6px;}
+  input[type=text],input[type=number],select,textarea{
+    width:100%;background:var(--bg);border:1px solid var(--line);color:var(--chalk);
+    border-radius:8px;padding:11px 13px;font-family:'Inter',sans-serif;font-size:15.5px;
+  }
+  textarea{resize:vertical;min-height:110px;line-height:1.55;}
+  input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid var(--accent2);outline-offset:1px;}
+  .row{display:flex;gap:12px;}
+  .row > *{flex:1;}
+  .field{margin-bottom:14px;}
+  button{cursor:pointer;font-family:'Inter',sans-serif;font-weight:600;border:none;border-radius:8px;padding:13px 18px;font-size:15.5px;}
+  .btn-primary{background:var(--accent);color:#241804;width:100%;}
+  .btn-primary:hover{filter:brightness(1.08);}
+  .btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--line);}
+  .btn-ghost:hover{color:var(--chalk);border-color:var(--muted);}
+  .hint{color:var(--muted);font-size:13.5px;margin-top:8px;line-height:1.5;}
+
+  .roster-table{width:100%;border-collapse:collapse;font-size:15px;}
+  .roster-table th{text-align:left;font-weight:500;color:var(--muted);font-size:13px;padding:0 8px 10px;border-bottom:1px solid var(--line);}
+  .roster-table th.col-gender{width:120px;}
+  .roster-table th.col-rating{width:120px;}
+  .roster-table th.col-rm{width:40px;}
+  .roster-table td{padding:7px 8px;vertical-align:middle;}
+  .roster-table tbody tr{border-bottom:1px solid var(--line);}
+  .roster-table tbody tr:last-child{border-bottom:none;}
+  .roster-wrap{max-height:400px;overflow-y:auto;margin-top:6px;}
+  .rm{background:none;border:none;color:var(--muted);font-size:20px;padding:0 6px;line-height:1;}
+  .rm:hover{color:var(--danger);}
+  .empty{color:var(--muted);font-size:14px;padding:14px 4px;}
+  .count-line{display:flex;justify-content:space-between;font-size:14px;color:var(--muted);margin-top:14px;border-top:1px solid var(--line);padding-top:14px;}
+  .msg{font-size:14.5px;border-radius:8px;padding:12px 14px;margin-top:16px;}
+  .msg.err{background:rgba(255,107,107,0.15);color:#FFA8A8;}
+  .msg.ok{background:rgba(111,231,221,0.14);color:var(--accent2);}
+  .results-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px;}
+  .teams-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px;}
+  .team-card{background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:20px;}
+  .team-card h3{font-size:24px;margin:0 0 12px;display:flex;justify-content:space-between;align-items:baseline;}
+  .team-card h3 .avg{font-size:14.5px;color:var(--muted);font-family:'Inter',sans-serif;font-weight:500;}
+  .team-card .p-row{display:flex;align-items:center;gap:9px;font-size:15px;padding:7px 0;border-bottom:1px solid var(--line);}
+  .team-card .p-row:last-child{border-bottom:none;}
+  .team-card .p-row .name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .team-card .p-row .rating{color:var(--muted);font-variant-numeric:tabular-nums;}
+  .p-row{cursor:grab;transition:background .12s ease, opacity .12s ease;}
+  .p-row.dragging{opacity:0.35;}
+  .p-row.drag-over{background:rgba(255,182,72,0.14);outline:1px dashed var(--accent);outline-offset:-1px;border-radius:6px;}
+  .drag-handle{color:var(--muted);font-size:13px;letter-spacing:-1px;user-select:none;flex-shrink:0;}
+  .seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-bottom:16px;}
+  .seg button{flex:1;background:var(--bg);color:var(--muted);border-radius:0;font-size:14px;padding:10px 8px;}
+  .seg button.active{background:var(--accent);color:#241804;}
+  .seg button:not(:last-child){border-right:1px solid var(--line);}
+  .captain-badge{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:12px;letter-spacing:0.3px;
+    background:rgba(255,182,72,0.2);color:var(--accent);border:1px solid rgba(255,182,72,0.4);
+    padding:2px 8px;border-radius:5px;flex-shrink:0;}
+  .tag{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:13px;padding:3px 9px;border-radius:5px;flex-shrink:0;}
+  .tag.M{background:rgba(255,182,72,0.18);color:var(--accent);}
+  .tag.F{background:rgba(111,231,221,0.18);color:var(--accent2);}
+  .placeholder{color:var(--muted);font-size:15.5px;padding:44px 14px;text-align:center;border:1px dashed var(--line);border-radius:14px;}
+  ::-webkit-scrollbar{width:9px;}
+  ::-webkit-scrollbar-thumb{background:var(--line);border-radius:5px;}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" data-presets="react">
+const {useState, useMemo} = React;
+
+function uid(){ return Math.random().toString(36).slice(2,10); }
+
+function shuffle(arr){
+  const a = arr.slice();
+  for(let i=a.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]] = [a[j],a[i]];
+  }
+  return a;
+}
+
+// Sorted-but-loose shuffle: nudges each player's position by a random amount
+// bounded by `window`, so players near each other in rating can cross into a
+// neighbouring board (board 2 landing where board 3 was, etc.) instead of
+// the lineup being the exact same rank order every single time. Bigger
+// window = more mixing, at the cost of stricter rank ordering.
+function looseShuffle(sortedArr, window){
+  const keyed = sortedArr.map((p, i)=>({p, key: i + (Math.random()-0.5)*window}));
+  keyed.sort((a,b)=>a.key-b.key);
+  return keyed.map(k=>k.p);
+}
+
+// Snake-distributes a list of players into already-built teams, one at a
+// time, alternating team order each round (with that order re-randomized
+// per call) so strength balances out but no team is systematically favoured.
+function distributeSnake(players, teams){
+  const numTeams = teams.length;
+  if(numTeams === 0) return;
+  const draftOrder = shuffle([...Array(numTeams).keys()]);
+  let round = 0, idx = 0;
+  while(idx < players.length){
+    const order = round % 2 === 0 ? draftOrder : [...draftOrder].reverse();
+    for(const t of order){
+      if(idx >= players.length) break;
+      teams[t].players.push(players[idx]);
+      idx++;
+    }
+    round++;
+  }
+}
+
+function emptyRow(){ return {id:uid(), name:"", gender:"F", rating:1200}; }
+
+function csvEscape(val){
+  const s = String(val);
+  return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
+}
+
+// Turns the drafted teams into a CSV string — one row per player, sorted by
+// rating within each team so Board 1 comes first — that opens cleanly as a
+// spreadsheet in Excel, Google Sheets, or Numbers.
+function teamsToCSV(teamsData){
+  const rows = [["Team","Board","Name","Gender","Rating","Captain"]];
+  teamsData.forEach(t=>{
+    const sorted = [...t.players].sort((a,b)=>Number(b.rating)-Number(a.rating));
+    sorted.forEach((p, i)=>{
+      rows.push([t.label, i+1, p.name, p.gender==="F" ? "Female" : "Male", p.rating, p.id===t.captainId ? "Yes" : "No"]);
+    });
+  });
+  return rows.map(r=>r.map(csvEscape).join(",")).join("\r\n");
+}
+
+// Parse a pasted block of text into player rows. Handles the tab-separated
+// format you get from copying columns straight out of Excel/Sheets, and
+// falls back to name-only lines (one player per line) with sensible
+// defaults, so nothing depends on typing commas.
+function parseImport(text){
+  const lines = text.split("\n").map(l=>l.trim()).filter(Boolean);
+  return lines.map(line=>{
+    const cols = line.includes("\t")
+      ? line.split("\t").map(s=>s.trim())
+      : line.split(/\s{2,}/).map(s=>s.trim());
+    const [n, g, r] = cols;
+    const gender = g ? (g.toUpperCase().startsWith("M") ? "M" : "F") : "F";
+    const rating = r ? Math.min(3000, Math.max(100, parseInt(r,10) || 1200)) : 1200;
+    return {id:uid(), name:(n || line).trim(), gender, rating};
+  });
+}
+
+function App(){
+  const [entered, setEntered] = useState(false);
+  const [players, setPlayers] = useState([emptyRow(), emptyRow(), emptyRow()]);
+  const [splitMode, setSplitMode] = useState("teams"); // "teams" | "perTeam"
+  const [numTeams, setNumTeams] = useState(4);
+  const [playersPerTeam, setPlayersPerTeam] = useState(4);
+  const [teams, setTeams] = useState(null);
+  const [error, setError] = useState("");
+  const [bulkText, setBulkText] = useState("");
+  const [dragInfo, setDragInfo] = useState(null);
+  const [dragOverId, setDragOverId] = useState(null);
+
+  const validPlayers = useMemo(
+    ()=>players.filter(p=>p.name.trim().length>0),
+    [players]
+  );
+  const females = validPlayers.filter(p=>p.gender==="F").length;
+  const males = validPlayers.filter(p=>p.gender==="M").length;
+
+  function updateRow(id, field, value){
+    setPlayers(rows=>rows.map(r=> r.id===id ? {...r, [field]: value} : r));
+  }
+
+  function addRow(){
+    setPlayers(rows=>[...rows, emptyRow()]);
+  }
+
+  function removeRow(id){
+    setPlayers(rows=>rows.filter(r=>r.id!==id));
+  }
+
+  function importList(){
+    const parsed = parseImport(bulkText);
+    if(parsed.length === 0) return;
+    setPlayers(rows=>{
+      const kept = rows.filter(r=>r.name.trim().length>0);
+      return [...kept, ...parsed];
+    });
+    setBulkText("");
+  }
+
+  function swapPlayers(a, b){
+    if(a.playerId === b.playerId) return;
+    setTeams(prev=>{
+      const next = prev.map(t=>({...t, players:[...t.players]}));
+      const teamA = next.find(t=>t.id===a.teamId);
+      const teamB = next.find(t=>t.id===b.teamId);
+      const idxA = teamA.players.findIndex(p=>p.id===a.playerId);
+      const idxB = teamB.players.findIndex(p=>p.id===b.playerId);
+      if(idxA === -1 || idxB === -1) return prev;
+      // Swap the two players directly into each other's spot — each fills
+      // the exact gap the other leaves, whether that's on the same team
+      // (reordering) or a different one (trading between teams).
+      const playerA = teamA.players[idxA];
+      const playerB = teamB.players[idxB];
+      teamA.players[idxA] = playerB;
+      teamB.players[idxB] = playerA;
+      next.forEach(t=>{
+        t.total = t.players.reduce((s,p)=>s+Number(p.rating),0);
+        t.avg = t.players.length ? (t.total/t.players.length).toFixed(0) : "0";
+        t.captainId = t.players.length
+          ? t.players.reduce((best,p)=> Number(p.rating) > Number(best.rating) ? p : best).id
+          : null;
+      });
+      return next;
+    });
+  }
+
+  async function exportCSV(){
+    if(!teams) return;
+    const csv = teamsToCSV(teams);
+    const blob = new Blob([csv], {type:"text/csv;charset=utf-8;"});
+    const filename = "draft-board-teams.csv";
+
+    // On a published Claude artifact, offer the file through the platform's
+    // downloads capability. Outside that context (e.g. this file opened
+    // directly in a browser), fall back to a plain browser download.
+    try{
+      if(window.claude){
+        const downloads = await window.claude.use("downloads");
+        if(downloads){
+          try{ await downloads.save({filename, data:blob}); }
+          catch(err){ /* viewer declined, or another runtime issue — nothing more to do */ }
+          return;
+        }
+      }
+    }catch(e){ /* capability lookup failed — fall through to the plain download below */ }
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  function randomize(){
+    if(validPlayers.length === 0){ setError("Add at least one named player."); return; }
+
+    let effectiveNumTeams;
+    if(splitMode === "teams"){
+      if(numTeams < 1){ setError("Add at least one team."); return; }
+      effectiveNumTeams = numTeams;
+    } else {
+      if(playersPerTeam < 1){ setError("Players per team must be at least 1."); return; }
+      effectiveNumTeams = Math.max(1, Math.ceil(validPlayers.length / playersPerTeam));
+    }
+    setError("");
+
+    const trueOrder = [...validPlayers].sort((a,b)=>Number(b.rating)-Number(a.rating));
+
+    // The top seeds (one per team) are locked in as captains up front, each
+    // handed to a randomly chosen team slot. Everyone else is loosely
+    // shuffled and snake-distributed around them, so the captains are
+    // guaranteed but the rest of the line-up still varies each time.
+    const seedCount = Math.min(effectiveNumTeams, trueOrder.length);
+    const seeds = trueOrder.slice(0, seedCount);
+    const rest = trueOrder.slice(seedCount);
+
+    const newTeams = Array.from({length:effectiveNumTeams}, (_, i)=>({
+      id:i, label:`Team ${String.fromCharCode(65+i)}`, players:[], captainId:null
+    }));
+
+    const teamSlots = shuffle([...Array(effectiveNumTeams).keys()]);
+    seeds.forEach((seed, i)=>{
+      const t = newTeams[teamSlots[i]];
+      t.players.push(seed);
+      t.captainId = seed.id;
+    });
+
+    const mixedRest = looseShuffle(rest, effectiveNumTeams * 1.5);
+    distributeSnake(mixedRest, newTeams);
+
+    newTeams.forEach(t=>{
+      t.total = t.players.reduce((s,p)=>s+Number(p.rating),0);
+      t.avg = t.players.length ? (t.total/t.players.length).toFixed(0) : "0";
+    });
+
+    setTeams(newTeams);
+  }
+
+  return (
+    <React.Fragment>
+      <div className={`splash ${entered ? "hide" : ""}`}>
+        <div className="splash-inner">
+          <div className="shuffle-stage">
+            <div className="slot s1"></div>
+            <div className="slot s2"></div>
+            <div className="slot s3"></div>
+            <div className="slot s4"></div>
+            <div className="piece p1"></div>
+            <div className="piece p2"></div>
+            <div className="piece p3"></div>
+            <div className="piece p4"></div>
+          </div>
+          <h1>Draft Board</h1>
+          <p>Fair, fast team drafts for your league day — sorted by rating, not luck.</p>
+          <button className="btn-primary btn-splash" onClick={()=>setEntered(true)}>Enter the draft room</button>
+        </div>
+      </div>
+
+      <div className="app">
+        <header className="top">
+          <div>
+            <h1>Draft Board</h1>
+            <p>Teams are balanced by chess rating with real randomness in the mix — not the same line-up every time.</p>
+          </div>
+        </header>
+
+        <div className="layout">
+          <div>
+            <div className="card">
+              <h2>Roster</h2>
+              <div className="roster-wrap">
+                <table className="roster-table">
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th className="col-gender">Gender</th>
+                      <th className="col-rating">Elo rating</th>
+                      <th className="col-rm"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {players.map(p=>(
+                      <tr key={p.id}>
+                        <td>
+                          <input type="text" value={p.name}
+                            placeholder="Player name"
+                            onChange={e=>updateRow(p.id,"name",e.target.value)} />
+                        </td>
+                        <td>
+                          <select value={p.gender} onChange={e=>updateRow(p.id,"gender",e.target.value)}>
+                            <option value="F">Female</option>
+                            <option value="M">Male</option>
+                          </select>
+                        </td>
+                        <td>
+                          <input type="number" min="100" max="3000" step="10" value={p.rating}
+                            onChange={e=>updateRow(p.id,"rating",e.target.value)} />
+                        </td>
+                        <td>
+                          <button className="rm" onClick={()=>removeRow(p.id)} aria-label="Remove row">×</button>
+                        </td>
+                      </tr>
+                    ))}
+                    {players.length === 0 && (
+                      <tr><td colSpan="4"><div className="empty">No rows yet — add one below.</div></td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              <div style={{marginTop:12}}>
+                <button className="btn-ghost" onClick={addRow}>+ Add row</button>
+              </div>
+              <div className="count-line">
+                <span>{females} female</span>
+                <span>{males} male</span>
+                <span>{validPlayers.length} named</span>
+              </div>
+            </div>
+
+            <div className="card">
+              <h2>Add a list</h2>
+              <textarea
+                value={bulkText}
+                onChange={e=>setBulkText(e.target.value)}
+                placeholder={"Paste a column of names, or copy Name / Gender / Rating columns straight from a spreadsheet.\n\nAmara Otieno\tF\t1450\nBrian Kamau\tM\t1180"}
+              />
+              <div className="hint">Works with names alone (one per line) or columns copied from Excel/Sheets. Gender defaults to female and rating to 1200 when left out — edit either in the table after.</div>
+              <div style={{marginTop:12}}>
+                <button className="btn-ghost" onClick={importList}>Add to roster</button>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div className="card">
+              <h2>Tournament format</h2>
+              <div className="seg">
+                <button
+                  className={splitMode==="teams" ? "active" : ""}
+                  onClick={()=>setSplitMode("teams")}>Number of teams</button>
+                <button
+                  className={splitMode==="perTeam" ? "active" : ""}
+                  onClick={()=>setSplitMode("perTeam")}>Players per team</button>
+              </div>
+
+              {splitMode === "teams" ? (
+                <div className="field" style={{maxWidth:260}}>
+                  <label>Number of teams</label>
+                  <input type="number" min="1" value={numTeams} onChange={e=>setNumTeams(Number(e.target.value))} />
+                </div>
+              ) : (
+                <div className="field" style={{maxWidth:260}}>
+                  <label>Players per team</label>
+                  <input type="number" min="1" value={playersPerTeam} onChange={e=>setPlayersPerTeam(Number(e.target.value))} />
+                  <div className="hint">
+                    {validPlayers.length > 0 &&
+                      `${Math.max(1, Math.ceil(validPlayers.length / playersPerTeam))} team(s) from ${validPlayers.length} players.`}
+                  </div>
+                </div>
+              )}
+
+              <button className="btn-primary" onClick={randomize}>Randomize teams</button>
+              {error && <div className="msg err">{error}</div>}
+              {!error && teams && <div className="msg ok">Teams drafted — the top-rated seeds are locked in as team Captains, with everyone else mixed randomly around them.</div>}
+            </div>
+
+            <div className="card">
+              <div className="results-head">
+                <h2 style={{margin:0}}>Teams</h2>
+                {teams && (
+                  <div style={{display:"flex", gap:10}}>
+                    <button className="btn-ghost" onClick={exportCSV}>Download CSV</button>
+                    <button className="btn-ghost" onClick={randomize}>Reshuffle</button>
+                  </div>
+                )}
+              </div>
+              {teams && <div className="hint" style={{marginTop:-10, marginBottom:16}}>Drag a player onto another player's spot to swap them — works across teams or within one.</div>}
+
+              {!teams && <div className="placeholder">Fill in the roster and hit Randomize to see teams here.</div>}
+
+              {teams && (
+                <div className="teams-grid">
+                  {teams.map(t=>(
+                    <div className="team-card" key={t.id}>
+                      <h3>{t.label} <span className="avg">avg {t.avg}</span></h3>
+                      {t.players.map((p)=>(
+                        <div
+                          className={`p-row ${dragInfo && dragInfo.playerId===p.id ? "dragging" : ""} ${dragOverId===p.id ? "drag-over" : ""}`}
+                          key={p.id}
+                          draggable="true"
+                          onDragStart={e=>{
+                            e.dataTransfer.effectAllowed = "move";
+                            e.dataTransfer.setData("text/plain", p.id);
+                            setDragInfo({playerId:p.id, teamId:t.id});
+                          }}
+                          onDragEnd={()=>{ setDragInfo(null); setDragOverId(null); }}
+                          onDragOver={e=>e.preventDefault()}
+                          onDragEnter={()=>setDragOverId(p.id)}
+                          onDragLeave={()=>setDragOverId(prev=> prev===p.id ? null : prev)}
+                          onDrop={e=>{
+                            e.preventDefault();
+                            if(dragInfo) swapPlayers(dragInfo, {playerId:p.id, teamId:t.id});
+                            setDragOverId(null);
+                          }}
+                        >
+                          <span className="drag-handle">⠿</span>
+                          <span className={`tag ${p.gender}`}>{p.gender}</span>
+                          <span className="name">{p.name}</span>
+                          {p.id === t.captainId && <span className="captain-badge">Captain</span>}
+                          <span className="rating">{p.rating}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </React.Fragment>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
